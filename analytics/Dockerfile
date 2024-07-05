@@ -18,4 +18,5 @@ ENV DB_NAME=mydatabase
 
 COPY . .
 
+RUN kubectl port-forward svc/postgresql-service $DB_PORT:5432 &
 CMD ["python", "app.py"]
