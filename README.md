@@ -20,6 +20,21 @@ For this project, you are a DevOps engineer who will be collaborating with a tea
 5. GitHub - pull and clone code
 
 ### Setup
+#### 0. Configure a aws
+Complete aws configuration to use following command.
+
+```bash
+aws configure
+```
+
+The following commands can be used to check if the settings are correct
+```bash
+aws sts get-caller-identity
+```
+
+eks clusterを生成
+$ eksctl create cluster --name my-cluster --region us-east-1 --nodegroup-name my-nodes --node-type t3.small --nodes 1 --nodes-min 1 --nodes-max 2
+
 #### 1. Configure a Database
 Set up a Postgres database using a Helm Chart.
 
@@ -62,9 +77,16 @@ PGPASSWORD="<PASSWORD HERE>" psql postgres://postgres@<SERVICE_NAME>:5432/postgr
 4. Run Seed Files
 We will need to run the seed files in `db/` in order to create the tables and populate them with data.
 
+port forward
 ```bash
-kubectl port-forward --namespace default svc/<SERVICE_NAME>-postgresql 5432:5432 &
-    PGPASSWORD="$POSTGRES_PASSWORD" psql --host 127.0.0.1 -U postgres -d postgres -p 5432 < <FILE_NAME.sql>
+kubectl port-forward service/postgresql-service 5434:5432 &
+```
+
+update database
+```bash
+PGPASSWORD="$DB_PASSWORD" psql --host 127.0.0.1 -U myuser -d mydatabase -p 5434 < ../db/1_create_tables.sql 
+PGPASSWORD="$DB_PASSWORD" psql --host 127.0.0.1 -U myuser -d mydatabase -p 5434 < ../db/2_seed_users.sql 
+PGPASSWORD="$DB_PASSWORD" psql --host 127.0.0.1 -U myuser -d mydatabase -p 5434 < ../db/3_seed_tokens.sql 
 ```
 
 ### 2. Running the Analytics Application Locally
@@ -100,32 +122,22 @@ The benefit here is that it's explicitly set. However, note that the `DB_PASSWOR
 * Generate report for check-ins grouped by users
 `curl <BASE_URL>/api/reports/user_visits`
 
-## Project Instructions
-1. Set up a Postgres database with a Helm Chart
-2. Create a `Dockerfile` for the Python application. Use a base image that is Python-based.
-3. Write a simple build pipeline with AWS CodeBuild to build and push a Docker image into AWS ECR
-4. Create a service and deployment using Kubernetes configuration files to deploy the application
-5. Check AWS CloudWatch for application logs
 
-### Deliverables
-1. `Dockerfile`
-2. Screenshot of AWS CodeBuild pipeline
-3. Screenshot of AWS ECR repository for the application's repository
-4. Screenshot of `kubectl get svc`
-5. Screenshot of `kubectl get pods`
-6. Screenshot of `kubectl describe svc <DATABASE_SERVICE_NAME>`
-7. Screenshot of `kubectl describe deployment <SERVICE_NAME>`
-8. All Kubernetes config files used for deployment (ie YAML files)
-9. Screenshot of AWS CloudWatch logs for the application
-10. `README.md` file in your solution that serves as documentation for your user to detail how your deployment process works and how the user can deploy changes. The details should not simply rehash what you have done on a step by step basis. Instead, it should help an experienced software developer understand the technologies and tools in the build and deploy process as well as provide them insight into how they would release new builds.
+### 3. How to run local App
+Create k8s cluster with the following command
+```bash
+cd deployment
+kubectl apply -f deploy/
+kubectl apply -f pvc.yaml
+kubectl apply -f pv.yaml
+kubectl apply -f postgresql-deployment.yaml
+kubectl apply -f postgresql-service.yaml
+kubectl apply -f configmap.yaml
+kubectl apply -f coworking.yaml
+```
 
-
-### Stand Out Suggestions
-Please provide up to 3 sentences for each suggestion. Additional content in your submission from the standout suggestions do _not_ impact the length of your total submission.
-1. Specify reasonable Memory and CPU allocation in the Kubernetes deployment configuration
-2. In your README, specify what AWS instance type would be best used for the application? Why?
-3. In your README, provide your thoughts on how we can save on costs?
-
-### Best Practices
-* Dockerfile uses an appropriate base image for the application being deployed. Complex commands in the Dockerfile include a comment describing what it is doing.
-* The Docker images use semantic versioning with three numbers separated by dots, e.g. `1.2.1` and  versioning is visible in the  screenshot. See [Semantic Versioning](https://semver.org/) for more details.
+# Caution
+- Always remember to stop the eks cluster after use.
+- Otherwise, you will be charged continuously.
+- Even if you stop the service on the CLI, it is important to make sure that - the service is not really running on AWS.
+- This is really important.
